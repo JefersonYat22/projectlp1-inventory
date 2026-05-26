@@ -6,13 +6,17 @@
 static int db_list_callback(void* data, int argc, char** argv, char** col_name);
 static int db_search_callback(void* data, int argc, char** argv, char** col_name);
 static int db_category_list_callback(void* data, int argc, char** argv, char** col_name);
+// una funcion static solo es visible dentro del archivo donde se define, no puede ser llamada desde otros archivos, es como una funcion privada de ese archivo.
 
-static sqlite3 *db = NULL;
+static sqlite3 *db = NULL; // puntero db para que sqlite lo rellene con el manejador de la base de datos abierta.
+// sqlite3 es un tipo de dato opaco, lo que significa que su estructura interna no es visible para el programador, solo se puede manipular a través de funciones proporcionadas 
+// por la biblioteca sqlite3. Esto ayuda a mantener la integridad de los datos y evita que el programador acceda directamente a la memoria interna de la base de datos, lo que podría causar errores o corrupción de datos.
 
 int db_init(const char* db_name) {  //sqlite3_open abre la base de datos(.sqlite)
     int rc = sqlite3_open(db_name, &db); // return code, se usa para saber si la operacion fue exitosa o hubo error
     if (rc != SQLITE_OK) { //constante de sqlite3.h que indica que la operacion fue exitosa
         fprintf(stderr, "No se pudo abrir la base de datos: %s\n", sqlite3_errmsg(db));
+        // fprintf es como printf, pero permite elegir a qué flujo enviar el texto, en este caso impprime en flujo de errores, y sqlite3_errmsg(db) devuelve un mensaje de error legible para humanos basado en el código de error almacenado en el objeto db.
         return rc;
     }
 
@@ -28,7 +32,7 @@ int db_init(const char* db_name) {  //sqlite3_open abre la base de datos(.sqlite
         "  id_categoria INTEGER,"
         "  precio REAL NOT NULL,"
         "  stock INTEGER NOT NULL DEFAULT 0,"
-        "  FOREIGN KEY (id_categoria) REFERENCES categorias(id)"
+        "  FOREIGN KEY (id_categoria) REFERENCES categorias(id)" // una categoría tiene muchos productos
         ");"
         
         "CREATE TABLE IF NOT EXISTS ventas ("
@@ -36,15 +40,15 @@ int db_init(const char* db_name) {  //sqlite3_open abre la base de datos(.sqlite
         "  id_producto INTEGER NOT NULL,"
         "  cantidad INTEGER NOT NULL,"
         "  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-        "  FOREIGN KEY (id_producto) REFERENCES productos(id)"
+        "  FOREIGN KEY (id_producto) REFERENCES productos(id)"  // se pueden hacer muchas ventas de un producto
         ");";
 
     char *err_msg = 0;
-    rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    rc = sqlite3_exec(db, sql, 0, 0, &err_msg); // ejecuta una operación, le mandamos el manejador de la base de datos, el sql a ejecutar, un callback (en este caso no lo usamos, por eso es 0), un puntero para datos del callback (tampoco lo usamos), y un puntero para almacenar mensajes de error si ocurren.
     
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Error al crear tabla: %s\n", err_msg);
-        sqlite3_free(err_msg);
+        sqlite3_free(err_msg); // libera memoria cuando ya no lo usa
     }
     
     return rc;
@@ -52,12 +56,13 @@ int db_init(const char* db_name) {  //sqlite3_open abre la base de datos(.sqlite
 
 int db_add_category(const char* nombre) {
     char sql[256];
-    sprintf(sql, "INSERT INTO categorias (nombre) VALUES ('%s');", nombre);
-    
+    sprintf(sql, "INSERT INTO categorias (nombre) VALUES ('%s');", nombre); // escribe texto en un string (a sql)
+    // solo llenamos la columna nombre porque id es autoincremental, se genera solo y no puede ser nulo, y no hay otras columnas en la tabla categorias.
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
     
     if (rc != SQLITE_OK) {
+        fprintf(stderr, "Error al insertar categoria: %s\n", err_msg);
         sqlite3_free(err_msg);
     }
     
@@ -66,12 +71,16 @@ int db_add_category(const char* nombre) {
 
 int db_list_categories() {
     const char *sql =
-        "SELECT id, nombre FROM categorias ORDER BY nombre ASC;";
+        "SELECT id, nombre FROM categorias ORDER BY nombre ASC;";  // trae las columnas id y nombre de la tabla
 
     char *err_msg = 0;
     printf("\n========== CATEGORIAS =========="
-           "\n");
+        "\n");
     int rc = sqlite3_exec(db, sql, db_category_list_callback, NULL, &err_msg);
+    // en este caso le mandamos un callback al exec, ya que necesitamos imprimir los resultados de la consulta.
+    // cosa que no es necesaria para casos como insertar, actualizar o eliminar, donde solo nos interesa saber si la operación fue exitosa o no, y no necesitamos procesar resultados de una consulta.
+    // por eso en esas operaciones el callback es 0.
+    // exec recibe un puntero a función como argumento.
 
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Error al listar categorias: %s\n", err_msg);
@@ -85,6 +94,8 @@ int db_list_categories() {
 int db_update_category(int id, const char* nombre) {
     char sql[256];
     sprintf(sql, "UPDATE categorias SET nombre='%s' WHERE id=%d;", nombre, id);
+    // SET especifica qué columnas se van a actualizar y WHERE es para saber qué fila, es la condición para encontrar la fila a actualizar, en este caso el id, que es único para cada categoría, por eso se usa como identificador para actualizar la categoría correcta.
+
 
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
@@ -102,7 +113,7 @@ int db_delete_category(int id, int delete_products) {
 
     if (delete_products) {
         sprintf(sql,
-                "BEGIN; "
+                "BEGIN; " //sirven para que operaciones se ejecuten juntas
                 "DELETE FROM productos WHERE id_categoria=%d; "
                 "DELETE FROM categorias WHERE id=%d; "
                 "COMMIT;",
@@ -115,6 +126,8 @@ int db_delete_category(int id, int delete_products) {
                 "COMMIT;",
                 id, id);
     }
+    // Con BEGIN...COMMIT es todo o nada, se ejecutan ambas o ninguna, porque en este caso no nos sirve que solo se ejecute una de las instrucciones
+    // en el caso de la constante sql inicial, no usamos BEGIN, porque son independientes, si falla una, las otras ya se ejecutaron, pero no causa inconsistencia.
 
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
@@ -136,7 +149,7 @@ int db_add_product(Producto p) {
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
     
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Error al insertar: %s\n", err_msg);
+        fprintf(stderr, "Error al insertar producto: %s\n", err_msg);
         sqlite3_free(err_msg);
     }
     
@@ -145,11 +158,20 @@ int db_add_product(Producto p) {
 
 int db_list_products() {
     const char *sql = 
+    /*
+    El orden de texto SQL es fijo por la sintaxis, normalmente va:
+    SELECT ... FROM ... [JOIN ...] [WHERE ...] [GROUP BY ...] [ORDER BY ...];
+    pero aunque se escriba así, el motor lo evalúa en otro orden lógico, primero from, luego where...
+    */
         "SELECT p.id, p.nombre, p.precio, p.stock, c.nombre as categoria "
-        "FROM productos p "
+        "FROM productos p " // por eso acá recién se define a p como la tabla productos.
         "LEFT JOIN categorias c ON p.id_categoria = c.id "
         "ORDER BY c.nombre ASC, p.nombre ASC;";
-    
+    /*  
+        Primero lee el FROM, luego el LEFT JOIN, por eso al llegar a SELECT es que ya tiene definidas ambas tablas
+        y puede elegir columnas de ambas, ya que sabe que hará un left join, y as categoria sirve para mostrarlo de 
+        esa forma en los resultados
+    */
     char *err_msg = 0;
     printf("\n========== INVENTARIO DE PRODUCTOS ==========\n");
     int rc = sqlite3_exec(db, sql, db_list_callback, NULL, &err_msg);

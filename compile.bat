@@ -1,3 +1,4 @@
+@echo off
 REM ========================================================
 REM SCRIPT DE LOTES (BATCH) - Compilación del Proyecto
 REM 
@@ -11,7 +12,7 @@ REM ========================================================
 REM PASO 1: Deshabilita la visualización de comandos
 REM El "@echo off" evita que se muestre cada línea de código mientras se ejecuta.
 REM Esto hace que la terminal sea más legible y limpia.
-@echo off
+
 
 REM PASO 2: Imprime un mensaje inicial en la terminal
 echo --- COMPILANDO PROYECTO C ---
