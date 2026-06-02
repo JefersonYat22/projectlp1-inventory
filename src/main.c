@@ -210,7 +210,9 @@ static void menu_reportes() {
         read_line(input, sizeof(input));
         opcion = atoi(input);
 
-        if (opcion == 1 || opcion == 2) {
+        if (opcion == 1) {
+            db_list_sales();
+        } else if (opcion == 2) {
             printf("Funcion no implementada todavia.\n");
         } else if (opcion == 0) {
             break;
@@ -257,9 +259,9 @@ int main() {
             db_list_products();
             id_producto = read_int_prompt("ID del producto: ");
             cantidad = read_int_prompt("Cantidad: ");
+            format_current_time(fecha, sizeof(fecha));
 
-            if (db_register_sale(id_producto, cantidad, &total) == SQLITE_OK) {
-                format_current_time(fecha, sizeof(fecha));
+            if (db_register_sale(id_producto, cantidad, &total, fecha) == SQLITE_OK) {
                 printf("[+] Venta registrada. Total: %.2f\n", total);
                 if (fecha[0] != '\0') {
                     printf("Fecha: %s\n", fecha);

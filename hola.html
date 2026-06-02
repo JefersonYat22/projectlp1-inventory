@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SupplyMentum - Eventos</title>
+    <style>
+        /* Variables de color y fuentes */
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #141414;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent-red: #e63946; /* Rojo del logo */
+            --border-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* --- Navbar (Simulado) --- */
+        .navbar {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 40px;
+        }
+        .navbar h2 {
+            font-size: 1.5rem;
+        }
+        .navbar h2 span { color: var(--accent-red); }
+
+        /* --- Títulos de Sección --- */
+        .section-title {
+            color: var(--accent-red);
+            text-transform: uppercase;
+            font-size: 1.8rem;
+            margin: 50px 0 30px 0;
+        }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 60px 20px;
+            background-color: #111;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        /* Logo de fondo simulado (Watermark) */
+        .hero::before {
+            content: "❖"; /* Símbolo temporal simulando el cubo */
+            position: absolute;
+            font-size: 300px;
+            color: rgba(230, 57, 70, 0.05);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+        .hero h1 .highlight {
+            color: var(--accent-red);
+            font-size: 3.5rem;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .stat-item {
+            flex: 1;
+            padding: 0 20px;
+        }
+        .stat-item:nth-child(2) {
+            border-left: 2px solid var(--border-color);
+            border-right: 2px solid var(--border-color);
+        }
+        .stat-item h3 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .stat-item p {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* --- PRÓXIMOS EVENTOS --- */
+        .proximos-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #555;
+        }
+        .card-img {
+            background-color: #222;
+            width: 100%;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .card-body h4 { color: var(--accent-red); margin-bottom: 5px; }
+        
+        .main-event { grid-row: span 2; }
+        .main-event .card-img { height: 350px; }
+        .sub-event .card-img { height: 120px; }
+        
+        .tertiary-row {
+            display: flex;
+            gap: 20px;
+        }
+        .tertiary-row .card { flex: 1.5; }
+        .mascot-space {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+        }
+
+        /* --- EVENTOS REALIZADOS --- */
+        .filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .search-input {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 20px;
+            width: 300px;
+            outline: none;
+        }
+        .categories {
+            display: flex;
+            gap: 15px;
+        }
+        .category-tag {
+            border: 1px dashed var(--accent-red);
+            color: var(--accent-red);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .realizados-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .realizados-grid .card-img { height: 180px; }
+
+        /* --- PREGUNTAS FRECUENTES --- */
+        .faq-section {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 80px;
+        }
+        .faq-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        details {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px 20px;
+        }
+        summary {
+            font-weight: bold;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: "⌄"; color: var(--accent-red); font-size: 1.2rem;}
+        details[open] summary::after { content: "⌃"; }
+        .faq-mascot {
+            flex: 0.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8rem;
+        }
+
+        /* Mascota Separador */
+        .separator-mascot {
+            text-align: center;
+            font-size: 5rem;
+            margin: 40px 0;
+            color: var(--border-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <nav class="navbar">
+        <h2>Supply<span>Mentum</span></h2>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Más de <span class="highlight">15</span> eventos<br>realizados con sorteos<br>de premios para...</h1>
+            <div class="stats-container">
+                <div class="stat-item">
+                    <h3>7</h3>
+                    <p>Eventos realizados<br>este año</p>
+                </div>
+                <div class="stat-item">
+                    <h3>+200</h3>
+                    <p>Asistentes</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Gratuitos para<br>gente piola</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <h2 class="section-title">Próximos Eventos</h2>
+    <section class="proximos-grid">
+        <div class="card main-event">
+            <div class="card-img"></div>
+            <div class="card-body">
+                <h4>1ER EVENTO + PRÓXIMO</h4>
+                <p>Charla: Arquitectura Web y Servidores en la UNI</p>
+            </div>
+        </div>
+        
+        <div class="card sub-event">
+            <div class="card-img"></div>
+            <div class="card-body">
+                <h4>2DO EVENTO + PRÓXIMO</h4>
+                <p>Taller: Sintaxis y POO con Java</p>
+            </div>
+        </div>
+
+        <div class="tertiary-row">
+            <div class="card sub-event">
+                <div class="card-img" style="height: 100px;"></div>
+                <div class="card-body">
+                    <h4>3ER EVENTO</h4>
+                </div>
+            </div>
+            <div class="mascot-space">
+                🦊😎
+            </div>
+        </div>
+    </section>
+
+    <div class="separator-mascot">🦊</div>
+
+    <h2 class="section-title">Eventos Realizados</h2>
+    <div class="filter-bar">
+        <input type="text" class="search-input" placeholder="Search...">
+        <div class="categories">
+            <span class="category-tag">Charla</span>
+            <span class="category-tag">Integración</span>
+        </div>
+    </div>
+
+    <section class="realizados-grid">
+        <div class="card"><div class="card-img"></div></div>
+        <div class="card"><div class="card-img"></div></div>
+        <div class="card"><div class="card-img"></div></div>
+        <div class="card"><div class="card-img"></div></div>
+        <div class="card"><div class="card-img"></div></div>
+        <div class="card"><div class="card-img"></div></div>
+    </section>
+
+    <h2 class="section-title">Preguntas Frecuentes</h2>
+    <section class="faq-section">
+        <div class="faq-list">
+            <details>
+                <summary>¿Quién?</summary>
+                <p style="margin-top: 10px; color: var(--text-muted);">Somos el centro cultural de estudiantes...</p>
+            </details>
+            <details>
+                <summary>¿Qué?</summary>
+                <p style="margin-top: 10px; color: var(--text-muted);">Realizamos eventos de desarrollo y tecnología.</p>
+            </details>
+            <details><summary>¿Cuándo?</summary></details>
+            <details><summary>¿Dónde?</summary></details>
+            <details><summary>¿Por qué?</summary></details>
+        </div>
+        <div class="faq-mascot">
+            🤔
+        </div>
+    </section>
+</div>
+
+</body>
+</html>

@@ -32,12 +32,15 @@ int db_delete_product(int id);
 int db_get_product_by_id(int id, Producto* out_product);
 
 // Registra una venta y descuenta stock.
-int db_register_sale(int id_producto, int cantidad, float* total);
+int db_register_sale(int id_producto, int cantidad, float* total, const char* fecha);
 
 // Lista productos ordenados alfabeticamente.
 int db_list_products();
 
 // Busca productos por nombre o categoria.
 int db_search_product(const char* keyword);
+
+// Lista todas las ventas registradas.
+int db_list_sales();
 
 #endif

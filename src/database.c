@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "sqlite3.h"
 #include "database.h"
 
 static int db_list_callback(void* data, int argc, char** argv, char** col_name);
 static int db_search_callback(void* data, int argc, char** argv, char** col_name);
 static int db_category_list_callback(void* data, int argc, char** argv, char** col_name);
+static int db_sales_list_callback(void* data, int argc, char** argv, char** col_name);
 // una funcion static solo es visible dentro del archivo donde se define, no puede ser llamada desde otros archivos, es como una funcion privada de ese archivo.
 
 static sqlite3 *db = NULL; // puntero db para que sqlite lo rellene con el manejador de la base de datos abierta.
@@ -218,30 +220,33 @@ int db_delete_product(int id) {
 }
 
 int db_get_product_by_id(int id, Producto* out_product) {
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt *stmt = NULL;  // instruccion SQL ya "compilada", las instrucciones SQL en realidad tienen que ser pasadas a binarios, eso hacía el exec
     const char *sql = "SELECT id, nombre, id_categoria, precio, stock FROM productos WHERE id=?;";
-    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL); // manejador de la base de datos abierta, sql, tamaño maximo en bytes del texto sql (-1 porque no hay limite, que lea hasta \0), stmt puntero a un puntero para llenar el stmt con la instruccion preparada, y un puntero para el resto del sql que no se usó (no lo usamos, por eso es NULL) 
 
     if (rc != SQLITE_OK) {
         return rc;
     }
+    // vincula un número entero en el espacio vacío de la consulta ya compilada
+    sqlite3_bind_int(stmt, 1, id); // 1. consulta ya compilada donde está el hueco(?), 2. posición del hueco (como es el primer hueco, acá empieza de 1), 3. valor a poner en el hueco (el id del producto que queremos buscar)
+    rc = sqlite3_step(stmt); // ejecuta la instrucción hasta encontrar la primera fila de resultados.
 
-    sqlite3_bind_int(stmt, 1, id);
-    rc = sqlite3_step(stmt);
+    // row = fila, encontrada
 
     if (rc == SQLITE_ROW) {
-        const unsigned char *nombre = sqlite3_column_text(stmt, 1);
+        const unsigned char *nombre = sqlite3_column_text(stmt, 1); // la función no copia el texto, devuelve un puntero que señala a la memoria interna de sqlite donde está guardado el nombre
+        // orden de la instrucción, desde cero.
         out_product->id = sqlite3_column_int(stmt, 0);
         out_product->id_categoria = sqlite3_column_int(stmt, 2);
         out_product->precio = (float)sqlite3_column_double(stmt, 3);
         out_product->stock = sqlite3_column_int(stmt, 4);
-        if (nombre) {
+        if (nombre) { // devolvió nombre válido?
             strncpy(out_product->nombre, (const char*)nombre, sizeof(out_product->nombre));
             out_product->nombre[sizeof(out_product->nombre) - 1] = '\0';
         } else {
             out_product->nombre[0] = '\0';
         }
-        sqlite3_finalize(stmt);
+        sqlite3_finalize(stmt); // destruye en memoria a la declaración preparada sql.
         return SQLITE_OK;
     }
 
@@ -249,9 +254,9 @@ int db_get_product_by_id(int id, Producto* out_product) {
     return SQLITE_ERROR;
 }
 
-int db_register_sale(int id_producto, int cantidad, float* total) {
+int db_register_sale(int id_producto, int cantidad, float* total, const char* fecha) {
     Producto p;
-    char sql[256];
+    char sql[512];
 
     if (cantidad <= 0) {
         return SQLITE_ERROR;
@@ -268,9 +273,9 @@ int db_register_sale(int id_producto, int cantidad, float* total) {
     sprintf(sql,
             "BEGIN; "
             "UPDATE productos SET stock = stock - %d WHERE id = %d; "
-            "INSERT INTO ventas (id_producto, cantidad) VALUES (%d, %d); "
+            "INSERT INTO ventas (id_producto, cantidad, fecha) VALUES (%d, %d, '%s'); "
             "COMMIT;",
-            cantidad, id_producto, id_producto, cantidad);
+            cantidad, id_producto, id_producto, cantidad, fecha);
 
     char *err_msg = 0;
     int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
@@ -293,7 +298,7 @@ static int db_list_callback(void* data, int argc, char** argv, char** col_name) 
         printf("%-5s %-30s %-10s %-8s %-15s\n", "ID", "Nombre", "Precio", "Stock", "Categoría");
         printf("%-5s %-30s %-10s %-8s %-15s\n", "--", "------", "------", "-----", "---------");
         primera_llamada = 0;
-    }
+    } // por cada fila de resultados crea un arreglo argv con los valores de las columnas, y un arreglo col_name con los nombres de las columnas, y argc es la cantidad de columnas, entonces se puede iterar sobre esos arreglos para imprimir los resultados, en este caso se imprimen directamente usando printf, pero también se podrían almacenar en una estructura o procesar de otra forma.
     printf("%-5s %-30s %-10s %-8s %-15s\n", 
         (argv[0] ? argv[0] : "NULL"),
         (argv[1] ? argv[1] : "NULL"),
@@ -309,7 +314,7 @@ int db_search_product(const char* keyword) {
     char sql[512];
     sprintf(sql, 
         "SELECT p.id, p.nombre, p.precio, p.stock, c.nombre as categoria "
-        "FROM productos p "
+        "FROM productos p " // tabla izquierda, mostrará todas las filas. 
         "LEFT JOIN categorias c ON p.id_categoria = c.id "
         "WHERE p.nombre LIKE '%%%s%%' OR c.nombre LIKE '%%%s%%';",
         keyword, keyword);
@@ -358,4 +363,46 @@ static int db_category_list_callback(void* data, int argc, char** argv, char** c
             (argv[1] ? argv[1] : "NULL"));
 
     return 0;
+}
+
+static int db_sales_list_callback(void* data, int argc, char** argv, char** col_name) {
+    static int primera_llamada = 1;
+    if (primera_llamada) {
+        printf("%-5s %-30s %-10s %-10s %-20s\n", "ID", "Producto", "Cantidad", "Subtotal", "Fecha");
+        printf("%-5s %-30s %-10s %-10s %-20s\n", "--", "---------", "--------", "---------", "----");
+        primera_llamada = 0;
+    }
+
+    float precio = (argv[3] ? (float)atof(argv[3]) : 0.0f);
+    int cantidad = (argv[2] ? atoi(argv[2]) : 0);
+    float subtotal = precio * cantidad;
+
+    printf("%-5s %-30s %-10s %-10.2f %-20s\n",
+            (argv[0] ? argv[0] : "NULL"),
+            (argv[1] ? argv[1] : "NULL"),
+            (argv[2] ? argv[2] : "NULL"),
+            subtotal,
+            (argv[4] ? argv[4] : "SIN FECHA"));
+
+    return 0;
+}
+
+int db_list_sales() {
+    const char *sql =
+        "SELECT v.id, p.nombre, v.cantidad, p.precio, v.fecha "
+        "FROM ventas v "
+        "LEFT JOIN productos p ON v.id_producto = p.id "
+        "ORDER BY v.fecha DESC;";
+
+    char *err_msg = 0;
+    printf("\n========== REPORTE DE VENTAS ==========\n");
+    int rc = sqlite3_exec(db, sql, db_sales_list_callback, NULL, &err_msg);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Error al listar ventas: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+
+    printf("=======================================\n\n");
+    return rc;
 }
