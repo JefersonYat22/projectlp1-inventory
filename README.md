@@ -6,10 +6,10 @@ Aplicación de consola para gestión de inventario de una tienda, utilizando la 
 
 | Código | Apellidos y Nombres | Rol en el Proyecto |
 |--------|---------------------|--------------------|
-| — | Beltrán Mendoza, Jean Paul Tomás | Desarrollador Backend / Lógica de negocio |
-| — | Coronel Tello, Álvaro Jesús | Desarrollador de Base de Datos / Capa DAO |
-| — | Mendoza Oscanoa, Percy Saúl | Documentación / Pruebas y QA |
-| — | Yataco Huasasquiche, Jeferson Snyder | Líder de Proyecto / Integración y Repositorio |
+| 20250156B | Beltrán Mendoza, Jean Paul Tomás | Desarrollador Backend / Lógica de negocio |
+| 20231122I | Coronel Tello, Álvaro Jesús | Desarrollador de Base de Datos / Capa DAO |
+| 20250088G | Mendoza Oscanoa, Percy Saúl | Documentación / Pruebas y QA |
+| 20244565A | Yataco Huasasquiche, Jeferson Snyder | Líder de Proyecto / Integración y Repositorio |
 
 ## Descripción
 
