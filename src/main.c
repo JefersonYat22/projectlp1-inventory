@@ -204,6 +204,7 @@ static void menu_reportes() {
         printf("--- REPORTES ---\n");
         printf("1) Reporte de ventas\n");
         printf("2) Stock bajo\n");
+        printf("3) Exportar ventas a CSV\n");
         printf("0) Volver\n");
         printf("Seleccione una opcion: ");
 
@@ -213,7 +214,10 @@ static void menu_reportes() {
         if (opcion == 1) {
             db_list_sales();
         } else if (opcion == 2) {
-            printf("Funcion no implementada todavia.\n");
+            int umbral = read_int_prompt("Ingrese umbral de stock bajo: ");
+            db_list_low_stock(umbral);
+        } else if (opcion == 3) {
+            db_export_sales_csv("data/reporte_ventas.csv");
         } else if (opcion == 0) {
             break;
         } else {

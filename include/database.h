@@ -43,4 +43,10 @@ int db_search_product(const char* keyword);
 // Lista todas las ventas registradas.
 int db_list_sales();
 
+// Lista productos con stock menor o igual al umbral.
+int db_list_low_stock(int umbral);
+
+// Exporta el reporte de ventas a un archivo CSV.
+int db_export_sales_csv(const char* filename);
+
 #endif

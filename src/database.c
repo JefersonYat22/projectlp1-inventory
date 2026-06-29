@@ -406,3 +406,109 @@ int db_list_sales() {
     printf("=======================================\n\n");
     return rc;
 }
+
+int db_list_low_stock(int umbral) {
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT p.id, p.nombre, p.precio, p.stock, c.nombre as categoria "
+        "FROM productos p "
+        "LEFT JOIN categorias c ON p.id_categoria = c.id "
+        "WHERE p.stock <= ? "
+        "ORDER BY p.stock ASC;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Error al preparar consulta de stock bajo: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_bind_int(stmt, 1, umbral);
+
+    printf("\n========== ALERTA: STOCK BAJO (umbral <= %d) ==========\n", umbral);
+    printf("%-5s %-30s %-10s %-8s %-15s\n", "ID", "Nombre", "Precio", "Stock", "Categoría");
+    printf("%-5s %-30s %-10s %-8s %-15s\n", "--", "------", "------", "-----", "---------");
+
+    int count = 0;
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        const char *nombre = (const char*)sqlite3_column_text(stmt, 1);
+        double precio = sqlite3_column_double(stmt, 2);
+        int stock = sqlite3_column_int(stmt, 3);
+        const char *categoria = (const char*)sqlite3_column_text(stmt, 4);
+
+        printf("%-5d %-30s %-10.2f %-8d %-15s\n",
+               id,
+               nombre ? nombre : "NULL",
+               precio,
+               stock,
+               categoria ? categoria : "SIN CAT");
+        count++;
+    }
+
+    if (count == 0) {
+        printf("No hay productos con stock bajo.\n");
+    } else {
+        printf("\nTotal de productos con stock bajo: %d\n", count);
+    }
+
+    printf("=====================================================\n\n");
+    sqlite3_finalize(stmt);
+    return SQLITE_OK;
+}
+
+int db_export_sales_csv(const char* filename) {
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT v.id, p.nombre, v.cantidad, p.precio, v.fecha "
+        "FROM ventas v "
+        "LEFT JOIN productos p ON v.id_producto = p.id "
+        "ORDER BY v.fecha DESC;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Error al preparar consulta de ventas: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    FILE *archivo = fopen(filename, "w");
+    if (!archivo) {
+        fprintf(stderr, "Error al abrir archivo: %s\n", filename);
+        sqlite3_finalize(stmt);
+        return SQLITE_ERROR;
+    }
+
+    // Encabezado del CSV
+    fprintf(archivo, "ID,Producto,Cantidad,Precio Unitario,Subtotal,Fecha\n");
+
+    int count = 0;
+    float total_general = 0.0f;
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        int id = sqlite3_column_int(stmt, 0);
+        const char *nombre = (const char*)sqlite3_column_text(stmt, 1);
+        int cantidad = sqlite3_column_int(stmt, 2);
+        float precio = (float)sqlite3_column_double(stmt, 3);
+        const char *fecha = (const char*)sqlite3_column_text(stmt, 4);
+        float subtotal = precio * (float)cantidad;
+
+        fprintf(archivo, "%d,%s,%d,%.2f,%.2f,%s\n",
+                id,
+                nombre ? nombre : "NULL",
+                cantidad,
+                precio,
+                subtotal,
+                fecha ? fecha : "SIN FECHA");
+
+        total_general += subtotal;
+        count++;
+    }
+
+    // Fila final con el total general
+    fprintf(archivo, "\n,,,,%.2f,TOTAL GENERAL\n", total_general);
+
+    fclose(archivo);
+    sqlite3_finalize(stmt);
+
+    printf("[+] Reporte exportado a '%s' (%d ventas, total: %.2f)\n", filename, count, total_general);
+    return SQLITE_OK;
+}
